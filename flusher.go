@@ -16,6 +16,9 @@ import (
 
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/Sirupsen/logrus"
+	lightstep "github.com/lightstep/lightstep-tracer-go"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/stripe/veneur/samplers"
 	"github.com/stripe/veneur/ssf"
 	"github.com/stripe/veneur/trace"
@@ -511,6 +514,7 @@ func (s *Server) flushTraces(ctx context.Context) {
 				Metrics: metrics,
 				Meta:    tags,
 			}
+
 			finalTraces = append(finalTraces, ddspan)
 		}
 	})
@@ -692,4 +696,42 @@ func postHelper(ctx context.Context, httpClient *http.Client, stats *statsd.Clie
 	stats.Count(action+".error_total", 0, nil, 1.0)
 	resultLogger.Debug("POSTed successfully")
 	return nil
+}
+
+// flushSpan builds a tracespan from an SSF and flushes
+// it using the provided OpenTracing tracer (sink)
+func flushSpan(tracer opentracing.Tracer, ssfSpan ssf.SSFSample) {
+
+	parentId := ssfSpan.Trace.ParentId
+	if parentId <= 0 {
+		parentId = 0
+	}
+
+	sp := tracer.StartSpan(
+		ssfSpan.Name,
+		opentracing.StartTime(time.Unix(ssfSpan.Timestamp, 0)),
+		lightstep.SetTraceID(uint64(ssfSpan.Trace.TraceId)),
+		lightstep.SetSpanID(uint64(ssfSpan.Trace.Id)),
+		lightstep.SetParentSpanID(uint64(parentId)))
+
+	sp.SetTag("resource", ssfSpan.Trace.Resource)
+	sp.SetTag(lightstep.ComponentNameKey, ssfSpan.Service)
+	// TODO don't hardcode
+	sp.SetTag("type", "http")
+	sp.SetTag("error-code", int64(ssfSpan.Status))
+	for _, tag := range ssfSpan.Tags {
+		sp.SetTag(tag.Name, tag.Value)
+	}
+
+	// TODO add metrics as tags to the span as well
+
+	if ssfSpan.Status > 0 {
+		// Note: this sets the OT-standard "error" tag, which
+		// LightStep uses to flag error spans.
+		ext.Error.Set(sp, true)
+	}
+
+	sp.FinishWithOptions(opentracing.FinishOptions{
+		FinishTime: time.Unix(ssfSpan.Timestamp, 0).Add(ssfSpan.Trace.Duration),
+	})
 }
