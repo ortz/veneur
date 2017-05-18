@@ -732,6 +732,6 @@ func flushSpan(tracer opentracing.Tracer, ssfSpan ssf.SSFSample) {
 	}
 
 	sp.FinishWithOptions(opentracing.FinishOptions{
-		FinishTime: time.Unix(ssfSpan.Timestamp, 0).Add(ssfSpan.Trace.Duration),
+		FinishTime: time.Unix(ssfSpan.Timestamp, 0).Add(time.Duration(ssfSpan.Trace.Duration)),
 	})
 }
