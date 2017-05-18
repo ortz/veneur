@@ -447,10 +447,10 @@
 			"revisionTime": "2016-05-07T21:13:57Z"
 		},
 		{
-			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
+			"checksumSHA1": "Y+HGqEkYM15ir+J93MEaHdyFy0c=",
 			"path": "golang.org/x/net/context",
-			"revision": "8e573f4005aa312856df2ea97c32b9beac70dd89",
-			"revisionTime": "2016-06-29T18:55:36Z"
+			"revision": "513929065c19401a1c7b76ecd942f9f86a0c061b",
+			"revisionTime": "2017-05-12T22:20:15Z"
 		},
 		{
 			"checksumSHA1": "U3h7+UyA3KUCRr3UldC0cCmevL4=",
