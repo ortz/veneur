@@ -471,70 +471,20 @@ func (s *Server) flushTraces(ctx context.Context) {
 
 	traces := s.TraceWorker.Flush()
 
-	var finalTraces []*DatadogTraceSpan
 	traces.Do(func(t interface{}) {
 		if t != nil {
-			span, ok := t.(ssf.SSFSample)
+			ssfSpan, ok := t.(ssf.SSFSample)
 			if !ok {
 				log.Error("Got an unknown object in tracing ring!")
 				return
 			}
-			// -1 is a canonical way of passing in invalid info in Go
-			// so we should support that too
-			parentID := span.Trace.ParentId
 
-			// check if this is the root span
-			if parentID <= 0 {
-				// we need parentId to be zero for json:omitempty to work
-				parentID = 0
+			// TODO add metrics here for monitoring
+			for _, sink := range tracerSinks {
+				flushSpan(sink, ssfSpan)
 			}
-
-			resource := span.Trace.Resource
-
-			tags := map[string]string{}
-			for _, tag := range span.Tags {
-				tags[tag.Name] = tag.Value
-			}
-
-			// TODO implement additional metrics
-			var metrics map[string]float64
-
-			ddspan := &DatadogTraceSpan{
-				TraceID:  span.Trace.TraceId,
-				SpanID:   span.Trace.Id,
-				ParentID: parentID,
-				Service:  span.Service,
-				Name:     span.Name,
-				Resource: resource,
-				Start:    span.Timestamp,
-				Duration: span.Trace.Duration,
-				// TODO don't hardcode
-				Type:    "http",
-				Error:   int64(span.Status),
-				Metrics: metrics,
-				Meta:    tags,
-			}
-
-			finalTraces = append(finalTraces, ddspan)
 		}
 	})
-	if len(finalTraces) != 0 {
-		// this endpoint is not documented to take an array... but it does
-		// another curious constraint of this endpoint is that it does not
-		// support "Content-Encoding: deflate"
-
-		err := postHelper(span.Attach(ctx), s.HTTPClient, s.Statsd, fmt.Sprintf("%s/spans", s.DDTraceAddress), finalTraces, "flush_traces", false)
-
-		if err == nil {
-			log.WithField("traces", len(finalTraces)).Info("Completed flushing traces to Datadog")
-		} else {
-			log.WithFields(logrus.Fields{
-				"traces":        len(finalTraces),
-				logrus.ErrorKey: err}).Warn("Error flushing traces to Datadog")
-		}
-	} else {
-		log.Info("No traces to flush, skipping.")
-	}
 }
 
 func (s *Server) flushEventsChecks() {
