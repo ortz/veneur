@@ -35,6 +35,8 @@ import (
 	s3p "github.com/stripe/veneur/plugins/s3"
 	"github.com/stripe/veneur/samplers"
 	"github.com/stripe/veneur/trace"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // VERSION stores the current veneur version.
@@ -99,6 +101,10 @@ type Server struct {
 	enableProfiling bool
 
 	HistogramAggregates samplers.HistogramAggregates
+
+	// TODO we don't want to hardcode this
+	// TODO we need to actually configure lightstep
+	lightstepTracer opentracing.Tracer
 }
 
 // NewFromConfig creates a new veneur server from a configuration specification.

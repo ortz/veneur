@@ -479,10 +479,7 @@ func (s *Server) flushTraces(ctx context.Context) {
 				return
 			}
 
-			// TODO add metrics here for monitoring
-			for _, sink := range tracerSinks {
-				flushSpan(sink, ssfSpan)
-			}
+			flushSpanLightstep(s.lightstepTracer, ssfSpan)
 		}
 	})
 }
@@ -650,14 +647,14 @@ func postHelper(ctx context.Context, httpClient *http.Client, stats *statsd.Clie
 
 // flushSpan builds a tracespan from an SSF and flushes
 // it using the provided OpenTracing tracer (sink)
-func flushSpan(tracer opentracing.Tracer, ssfSpan ssf.SSFSample) {
+func flushSpanLightstep(lightstepTracer opentracing.Tracer, ssfSpan ssf.SSFSample) {
 
 	parentId := ssfSpan.Trace.ParentId
 	if parentId <= 0 {
 		parentId = 0
 	}
 
-	sp := tracer.StartSpan(
+	sp := lightstepTracer.StartSpan(
 		ssfSpan.Name,
 		opentracing.StartTime(time.Unix(ssfSpan.Timestamp, 0)),
 		lightstep.SetTraceID(uint64(ssfSpan.Trace.TraceId)),
