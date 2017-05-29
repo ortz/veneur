@@ -140,7 +140,7 @@ func testFlushTraceDatadog(t *testing.T, protobuf, jsn io.Reader) {
 	case <-remoteResponseChan:
 		// all is safe
 		break
-	case <-time.After(10 * time.Second):
+	case <-time.After(9 * time.Second):
 		assert.Fail(t, "Global server did not complete all responses before test terminated!")
 	}
 }
