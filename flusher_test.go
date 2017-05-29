@@ -2,6 +2,7 @@ package veneur
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	lightstep "github.com/lightstep/lightstep-tracer-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stripe/veneur/samplers"
 )
@@ -92,6 +94,20 @@ func TestFlushTracesDatadog(t *testing.T) {
 			testFlushTraceDatadog(t, pb, js)
 		})
 	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%s_%s", tc.Name, "lightstep"), func(t *testing.T) {
+			pb, err := os.Open(tc.ProtobufFile)
+			assert.NoError(t, err)
+			defer pb.Close()
+
+			js, err := os.Open(tc.JSONFile)
+			assert.NoError(t, err)
+			defer js.Close()
+
+			testFlushTraceLightstep(t, pb, js)
+		})
+	}
 }
 
 func testFlushTraceDatadog(t *testing.T, protobuf, jsn io.Reader) {
@@ -143,4 +159,37 @@ func testFlushTraceDatadog(t *testing.T, protobuf, jsn io.Reader) {
 	case <-time.After(9 * time.Second):
 		assert.Fail(t, "Global server did not complete all responses before test terminated!")
 	}
+}
+
+// testFlushTraceLightstep tests that the Lightstep sink can be initialized correctly
+// and that the flushSpansLightstep function executes without error.
+// We can't actually test the functionality end-to-end because the lightstep
+// implementation doesn't expose itself for mocking.
+func testFlushTraceLightstep(t *testing.T, protobuf, jsn io.Reader) {
+	config := globalConfig()
+
+	// this can be anything as long as it's not empty
+	config.TraceAPIAddress = "http://example.org"
+	server := setupVeneurServer(t, config, nil)
+	defer server.Shutdown()
+
+	lightstepTracer := lightstep.NewTracer(lightstep.Options{
+		AccessToken: "TestAccessToken",
+	})
+
+	server.tracerSinks = append(server.tracerSinks, tracerSink{
+		name:   "Lightstep",
+		tracer: lightstepTracer,
+		flush:  flushSpansLightstep,
+	})
+
+	assert.Equal(t, server.DDTraceAddress, config.TraceAPIAddress)
+
+	packet, err := ioutil.ReadAll(protobuf)
+	assert.NoError(t, err)
+
+	server.HandleTracePacket(packet)
+
+	assert.NoError(t, err)
+	server.Flush()
 }

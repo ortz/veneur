@@ -715,7 +715,7 @@ func flushSpansDatadog(ctx context.Context, s *Server, nilTracer opentracing.Tra
 	}
 }
 
-func flushSpansLightstep(lightstepTracer opentracing.Tracer, ssfSpans []ssf.SSFSample) {
+func flushSpansLightstep(ctx context.Context, s *Server, lightstepTracer opentracing.Tracer, ssfSpans []ssf.SSFSample) {
 	for _, span := range ssfSpans {
 		flushSpanLightstep(lightstepTracer, span)
 	}
