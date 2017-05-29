@@ -59,7 +59,7 @@ func TestDeviceMagicTag(t *testing.T) {
 	assert.Contains(t, metrics[0].Tags, "x:e", "Last tag is still around")
 }
 
-func TestFlushTraces(t *testing.T) {
+func TestFlushTracesDatadog(t *testing.T) {
 	type TestCase struct {
 		Name         string
 		ProtobufFile string
@@ -89,12 +89,12 @@ func TestFlushTraces(t *testing.T) {
 			assert.NoError(t, err)
 			defer js.Close()
 
-			testFlushTrace(t, pb, js)
+			testFlushTraceDatadog(t, pb, js)
 		})
 	}
 }
 
-func testFlushTrace(t *testing.T, protobuf, jsn io.Reader) {
+func testFlushTraceDatadog(t *testing.T, protobuf, jsn io.Reader) {
 	remoteResponseChan := make(chan struct{}, 1)
 	remoteServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var expected []*DatadogTraceSpan
@@ -118,6 +118,12 @@ func testFlushTrace(t *testing.T, protobuf, jsn io.Reader) {
 
 	server := setupVeneurServer(t, config, nil)
 	defer server.Shutdown()
+
+	server.tracerSinks = append(server.tracerSinks, tracerSink{
+		name:   "Datadog",
+		tracer: nil,
+		flush:  flushSpansDatadog,
+	})
 
 	assert.Equal(t, server.DDTraceAddress, config.TraceAPIAddress)
 

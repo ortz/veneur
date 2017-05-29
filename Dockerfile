@@ -41,7 +41,6 @@ RUN gofmt -w .
 RUN git add .
 RUN git diff-index --cached HEAD
 RUN cat ssf/sample.pb.go
-RUN git diff --cached sff/sample.pb.go
 
 
 RUN govendor test -v -timeout 10s +local

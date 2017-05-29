@@ -104,7 +104,18 @@ type Server struct {
 
 	// TODO we don't want to hardcode this
 	// TODO we need to actually configure lightstep
-	lightstepTracer opentracing.Tracer
+	// TODO also accessing it is a race condition
+	tracerSinks []tracerSink
+}
+
+// TODO refactor and move this
+type tracerSink struct {
+	name string
+
+	// This may be nil, if the tracer doesn't use
+	// an opentracing backend
+	tracer opentracing.Tracer
+	flush  traceFlusher
 }
 
 // NewFromConfig creates a new veneur server from a configuration specification.
@@ -784,5 +795,6 @@ func (s *Server) getPlugins() []plugins.Plugin {
 
 // TracingEnabled returns true if tracing is enabled.
 func (s *Server) TracingEnabled() bool {
+	//TODO we now need to check that the backends are flushing the data too
 	return s.TraceWorker != nil
 }
