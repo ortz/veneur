@@ -1,4 +1,4 @@
-FROM golang:1.8
+FROM golang:1.7
 MAINTAINER The Stripe Observability Team <support@stripe.com>
 
 RUN mkdir -p /build
@@ -39,8 +39,8 @@ RUN gofmt -w .
 # therefore reports that the file may have changed (ie, a series of 0s)
 # See https://github.com/stripe/veneur/pull/110#discussion_r92843581
 RUN git add .
-RUN git diff-index --cached HEAD
 RUN cat ssf/sample.pb.go
+RUN git diff-index --cached --exit-code HEAD
 
 
 RUN govendor test -v -timeout 10s +local
